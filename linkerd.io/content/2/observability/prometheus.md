@@ -10,8 +10,6 @@ aliases = [
   parent = "observability"
 +++
 
-## Exporting metrics
-
 If you have an existing Prometheus cluster, it is very easy to export Linkerd's
 rich telemetry data to your cluster.  Simply add the following item to your
 `scrape_configs` in your Prometheus config file (replace `{{.Namespace}}` with
@@ -51,28 +49,24 @@ For more information on specific metric and label definitions, have a look at
 For more information on Prometheus' `/federate` endpoint, have a look at the
 [Prometheus federation docs](https://prometheus.io/docs/prometheus/latest/federation/).
 
-## Exporting metrics from Prometheus to other data stores
+# Exporting to other data stores
 
 If you want to export to a data store other than Prometheus, you can query
 Linkerd's Prometheus’ instance directly, via the Federation API or JSON API.
 
 ### Prometheus Federation API
 
-#### Inside Kubernetes cluster
-
 ```bash
-curl -G --data-urlencode 'match[]={job="linkerd-proxy"}' --data-urlencode 'match[]={job="linkerd-controller"}' http://prometheus.linkerd.svc.cluster.local:9090/federate
+curl -G \
+  --data-urlencode 'match[]={job="linkerd-proxy"}' \
+  --data-urlencode 'match[]={job="linkerd-controller"}' \
+  http://prometheus.linkerd.svc.cluster.local:9090/federate
 ```
 
-#### Outside Kubernetes cluster
-
-```bash
-kubectl -n linkerd port-forward $(kubectl -n linkerd get po --selector=linkerd.io/control-plane-component=prometheus -o jsonpath='{.items[*].metadata.name}') 9090:9090
-```
-and then:
-```bash
-curl -G --data-urlencode 'match[]={job="linkerd-proxy"}' --data-urlencode 'match[]={job="linkerd-controller"}' http://localhost:9090/federate
-```
+Note: if your data store is outside the Kubernetes cluster, it is likely that
+you'll want to setup
+[ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+at a domain name of your choice with authentication
 
 ### Prometheus JSON API
 
@@ -83,7 +77,7 @@ metrics:
 curl http://prometheus.linkerd.svc.cluster.local:9090/api/v1/query?query=request_total
 ```
 
-## Querying Linkerd's `/metrics` endpoint
+# Querying the proxy
 
 If you want to query a Linkerd proxy directly, you can use its `/metrics`
 endpoint.
@@ -96,9 +90,15 @@ For example, to view `/metrics` from a single Linkerd proxy, running in the
 `linkerd` namespace:
 
 ```bash
-kubectl port-forward -n linkerd $(kubectl -n linkerd get pods -l linkerd.io/control-plane-ns=linkerd -o jsonpath='{.items[0].metadata.name}') 4191:4191
+kubectl -n linkerd port-forward \
+  $(kubectl -n linkerd get pods \
+    -l linkerd.io/control-plane-ns=linkerd \
+    -o jsonpath='{.items[0].metadata.name}') \
+  4191:4191
 ```
+
 and then:
+
 ```bash
 curl localhost:4191/metrics
 ```
